@@ -1,0 +1,207 @@
+<!-- R Commander Markdown Template -->
+
+Replace with Main Title
+=======================
+
+### Your Name
+
+### `r as.character(Sys.Date())`
+
+```{r echo=FALSE}
+# include this code chunk as-is to set options
+knitr::opts_chunk$set(comment=NA, prompt=TRUE, out.width=750, fig.height=8, fig.width=8)
+library(Rcmdr)
+library(car)
+library(RcmdrMisc)
+```
+
+```{r}
+# Load libraries
+```
+
+```{r}
+library(caret)
+```
+
+```{r}
+library(rpart)
+```
+
+```{r}
+# load data
+```
+
+```{r}
+training=read.csv("~/Desktop/pml-training.csv")
+```
+
+```{r}
+testing=read.csv("~/Desktop/pml-testing.csv")
+```
+
+```{r}
+# getting to know the data. First how many variables and samples, the names of the variables, the categories of the classe variable. Finally showing the first 3 samples values, and then counting the missing data.
+```
+
+```{r}
+dim(training)
+```
+
+```{r}
+dim(testing)
+```
+
+```{r}
+names(training) # var names
+```
+
+```{r}
+levels(training$classe)
+```
+
+```{r}
+head(training, n=3L) # values
+```
+
+```{r}
+sapply(training, function(x)(sum(is.na(x)))) # NA counts
+```
+
+```{r}
+nas <- sapply(training, function(x)(sum(is.na(x))))
+```
+
+```{r}
+nas[! nas %in% 19216]
+```
+
+```{r}
+### Having some ideea about data normality
+```
+
+```{r}
+library(e1071)
+```
+
+```{r}
+kurt <- sapply(training, function(x)(abs(kurtosis(x))))
+```
+
+```{r}
+length(kurt[kurt >1])
+```
+
+```{r}
+skew <- sapply(training, function(x)(abs(skewness(x))))
+```
+
+```{r}
+length(skew[skew >1])
+```
+
+```{r}
+### Lots of variables seem to be skewed or not normal. Thus linear models might but not necesarelly have problems. A nonlinear approach could be chosed.
+```
+
+```{r}
+# Creating a subset of the training data with the variables of interest. I excluded the variables with lots of missing data, date/time information, IDs, names.
+```
+
+```{r}
+training <- subset(training, select=c(classe, 
+roll_arm, pitch_arm, yaw_arm, gyros_arm_x, gyros_arm_y, gyros_arm_z, accel_arm_x, accel_arm_y, accel_arm_z, 
+  magnet_arm_x, magnet_arm_y, magnet_arm_z, total_accel_arm,
+roll_forearm, pitch_forearm, yaw_forearm, gyros_forearm_x, gyros_forearm_y, gyros_forearm_z, accel_forearm_x, 
+  accel_forearm_y, accel_forearm_z, magnet_forearm_x, magnet_forearm_y, magnet_forearm_z,total_accel_forearm,
+roll_belt, pitch_belt, yaw_belt, gyros_belt_x, gyros_belt_y, gyros_belt_z, accel_belt_x, accel_belt_y, 
+  accel_belt_z, magnet_belt_x, magnet_belt_y, magnet_belt_z, total_accel_belt,
+roll_dumbbell, pitch_dumbbell, yaw_dumbbell, gyros_dumbbell_x, gyros_dumbbell_y, gyros_dumbbell_z, 
+  accel_dumbbell_x, accel_dumbbell_y, accel_dumbbell_z, magnet_dumbbell_x, magnet_dumbbell_y, magnet_dumbbell_z, 
+  total_accel_dumbbell))
+```
+
+```{r}
+# define training control for K-fold crossvalidation with k=10 - a common used value.
+```
+
+```{r}
+train_control<- trainControl(method="cv", number=10, savePredictions = TRUE)
+```
+
+
+```{r}
+library(doParallel)
+```
+
+```{r}
+cl <- makeCluster(6)#detectCores()
+```
+
+```{r}
+registerDoParallel(cl)
+```
+
+```{r}
+set.seed(12345)
+```
+
+```{r}
+model<- train(classe~., data=training, trControl=train_control, method="rpart")
+```
+
+```{r}
+stopCluster(cl)
+```
+
+```{r}
+model
+```
+
+```{r}
+# define training control for K-fold crossvalidation with k=10 - a common used value.
+```
+
+```{r}
+train_control<- trainControl(method="cv", number=10, savePredictions = TRUE)
+```
+
+### Since the accuracy was so low, I decided to use a random forest and to move to another computer and make use of 4 cores with paralel computing. Since the laptop got too hot, I put it in the fridge to finish its analysis :)))
+```{r}
+library(doParallel)
+```
+
+```{r}
+cl <- makeCluster(4)
+```
+
+```{r}
+registerDoParallel(cl)
+```
+
+
+```{r}
+set.seed(12345)
+```
+
+```{r}
+model<- train(classe~., data=training, trControl=train_control, method="rf")
+```
+
+```{r}
+stopCluster(cl)
+```
+
+```{r}
+model
+```
+
+#### The accuracy in the training set was 0.995. I expect the testing (out of sample) accuracy to be lower, due to overfitting.
+
+#### Predicting the classe variable using the testing data with the random forest model
+
+
+```{r}
+predict(model, testing)
+```
+
+#### Indeed the effort paid off since the prediction was perfect in the testing set - in the quiz
